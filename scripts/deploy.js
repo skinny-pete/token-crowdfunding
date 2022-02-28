@@ -5,9 +5,10 @@
 // Runtime Environment's members available in the global scope.
 const hre = require("hardhat");
 
-const toFund = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
-const projectDeveloper = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
-let caps = ["100", "1000", "20000"].map(x => ethers.utils.parseEther(x))
+const toFund = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266" //This account will get 10000 TestTokens at deployment - currently set to account #0 of the hardhat node default accounts
+
+const projectDeveloper = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" //The account authorised to withdraw funds
+let caps = ["100", "1000", "20000"].map(x => ethers.utils.parseEther(x)) //The various caps at which project developer is allowed to withdraw
 
 
 
