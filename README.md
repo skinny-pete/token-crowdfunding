@@ -1,15 +1,23 @@
-# Basic Sample Hardhat Project
+# Crowdfunding Contracts
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
+## Installations
+`npm install --save-dev hardhat`  
+  
+`npm install --save-dev @nomiclabs/hardhat-waffle ethereum-waffle chai @nomiclabs/hardhat-ethers ethers`
 
-Try running some of the following tasks:
+## Running
+To run tests:
+`npx hardhat test`
 
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-node scripts/sample-script.js
-npx hardhat help
-```
+To deploy:
+`npx hardhat run scripts/deploy.js --network [NETWORK_NAME]`
+
+Options for NETWORK_NAME are currently:  
+`localhost` - for deploying to an already running hardhat node  
+`ropsten` - for deploying to the ropsten public testnet using the private key included in hardhat.config.js  
+
+
+To start a hardhat node, the command is `npx hardhat node`  
+
+
+
