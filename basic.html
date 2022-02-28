@@ -1,0 +1,68 @@
+<h1>Fundraising</h1>
+<button onclick="connectWallet()">Connect Wallet</button>
+<br></br>
+<input id="depositQuantity">Deposit Amount</input>
+<button onclick="deposit()">Deposit</button>
+<br></br>
+<input id="withdrawQuantity">Withdraw Amount</input>
+<button onclick="withdraw()">Withdraw</button>
+<br></br>
+<p1>Stablecoin Balance Locked in Contract: </p1>
+<label id="balanceLocked">0</label>
+<button onclick="updateBalanceLocked()">Update</button>
+
+
+<!-- This exposes the library as a global variable: ethers -->
+<script src="https://cdn.ethers.io/scripts/ethers-v3.min.js"
+        charset="utf-8"
+        type="text/javascript">
+</script>
+<script>
+    const stableAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+    const fundAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+
+    const fundABI = [
+        "function deposit(uint256 amount) public returns (bool)",
+        "function withdraw(uint256 amount) public returns (bool)",
+        "function caps() public view returns (uint[])"
+    ]
+
+    const stableABI = [
+        "function mint(address to, uint256 amount) public",
+        "function approve(address spender, uint256 amount) public",
+        "function balanceOf(address who) public view returns (uint256)"
+    ]
+
+    let fundContract;
+    let stableContract;
+
+
+    async function connectWallet() {
+        console.log(ethers)
+        provider = new ethers.providers.Web3Provider(window.ethereum)
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner()
+
+        fundContract = new ethers.Contract(fundAddress, fundABI, signer)
+        stableContract = new ethers.Contract(stableAddress, stableABI, signer)
+    }
+
+    async function deposit() {
+        // console.log
+        let amount = ethers.utils.parseEther(document.getElementById('depositQuantity').value)
+        await stableContract.connect(signer).approve(fundAddress, amount)
+        await fundContract.connect(signer).deposit(amount)    
+    }
+
+    async function withdraw() {
+        let amount = ethers.utils.parseEther(document.getElementById('withdrawQuantity').value)
+        await fundContract.connect(signer).withdraw(amount)
+    }
+
+    async function updateBalanceLocked() {
+        let balance = await stableContract.connect(signer).balanceOf(fundAddress)
+        console.log(balance)
+        document.getElementById("balanceLocked").innerHTML = ethers.utils.formatEther(balance)
+        console.log(balance.toString())
+    }
+</script>
