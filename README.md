@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Crowdfunding
 
 ## Scripts
@@ -26,8 +25,8 @@ Adjust the following consts:
 |`toApprove: string` | address you want to approve|
 |`private_key: string` | the private key of the account you want to call the contract from|
 |`fundAddress: string` | the address of the fund contract|
-=======
-# Crowdfunding Contracts
+
+
 
 ## Installations
 `npm install --save-dev hardhat`  
@@ -50,6 +49,5 @@ Options for NETWORK_NAME are currently:
 
 To start a hardhat node, the command is `npx hardhat node`  
 
->>>>>>> 02b6818f9a6208b70e6ac86f8e1ec6fcd428a9e9
 
 
