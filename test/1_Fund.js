@@ -31,20 +31,6 @@ async function setup() {
 }
 
 describe("Fund", function () {
-  // it("Should return the new greeting once it's changed", async function () {
-  //   // const Greeter = await ethers.getContractFactory("Greeter");
-  //   // const greeter = await Greeter.deploy("Hello, world!");
-  //   // await greeter.deployed();
-
-  //   // expect(await greeter.greet()).to.equal("Hello, world!");
-
-  //   // const setGreetingTx = await greeter.setGreeting("Hola, mundo!");
-
-  //   // // wait until the transaction is mined
-  //   // await setGreetingTx.wait();
-
-  //   // expect(await greeter.greet()).to.equal("Hola, mundo!");
-  // });
   it("Should deploy without errors", async () => {
     await setup();
   })
@@ -59,6 +45,7 @@ describe("Fund", function () {
     } = await setup()
 
     await stable.connect(owner).mint(add1.address, ethers.utils.parseEther("100"))
+    await fund.approveAddress(add1.address)
 
     firstDeposit = ethers.utils.parseEther("10")
     await stable.connect(add1).approve(fund.address, firstDeposit);
@@ -82,6 +69,7 @@ describe("Fund", function () {
     } = await setup()
 
     await stable.connect(owner).mint(add1.address, ethers.utils.parseEther("100"))
+    await fund.approveAddress(add1.address)
 
     firstDeposit = ethers.utils.parseEther("10")
     await stable.connect(add1).approve(fund.address, firstDeposit);
@@ -100,6 +88,7 @@ describe("Fund", function () {
     } = await setup()
 
     await stable.connect(owner).mint(add1.address, ethers.utils.parseEther("150"))
+    await fund.approveAddress(add1.address)
 
     firstDeposit = ethers.utils.parseEther("150")
     await stable.connect(add1).approve(fund.address, firstDeposit);
@@ -123,7 +112,7 @@ describe("Fund", function () {
       add2,
       projectDeveloper
     } = await setup()
-    // let tally = BigNumber.from(0)
+    await fund.approveAddress(add1.address)
     let pcap;
     for (const cap of caps) {
       await stable.connect(owner).mint(add1.address, cap)
@@ -146,6 +135,8 @@ describe("Fund", function () {
       add2,
       projectDeveloper
     } = await setup()
+
+    await fund.approveAddress(add1.address)
     // let tally = BigNumber.from(0)
     for (const cap of caps) {
       await stable.connect(owner).mint(add1.address, cap)

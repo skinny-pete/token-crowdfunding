@@ -7,9 +7,12 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 contract Fund is ERC20 {
     address public projectDeveloper;
+    address private owner;
 
     address public currency;
     uint256[] public caps;
+
+    mapping(address => bool) whitelist;
 
     // mapping(address => uint) contribution
     uint256 public totalContributions;
@@ -30,9 +33,20 @@ contract Fund is ERC20 {
         currency = _currency;
         caps = _caps;
         totalContributions = 0;
+        owner = msg.sender;
     }
 
-    function deposit(uint256 amount) public returns (bool) {
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
+
+    modifier whitelisted() {
+        require(whitelist[msg.sender], "Address not permitted");
+        _;
+    }
+
+    function deposit(uint256 amount) public whitelisted returns (bool) {
         require(
             IERC20(currency).transferFrom(msg.sender, address(this), amount)
         );
@@ -83,10 +97,6 @@ contract Fund is ERC20 {
             uint balance = IERC20(currency).balanceOf(address(this));
             IERC20(currency).transfer(projectDeveloper, balance);
         }
-        // else if (currentCap == 2) {
-        //     IERC20(currency).transfer(projectDeveloper, caps[1]);
-        //     withdrawn += caps[1];
-        // }
         else { //Otherwise transfer the last complete cap
             IERC20(currency).transfer(projectDeveloper, caps[currentCap-1] - withdrawn);
             withdrawn += caps[currentCap - 1] - withdrawn;
@@ -94,4 +104,10 @@ contract Fund is ERC20 {
         
         return true;
     }
+
+    function approveAddress(address toApprove) public onlyOwner {
+        whitelist[toApprove] = true;
+    }
+
+    
 }

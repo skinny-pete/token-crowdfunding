@@ -11,6 +11,8 @@
     "prettier-plugin-solidity": "^1.0.0-beta.19"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.5.0"
+    "@openzeppelin/contracts": "^4.5.0",
+    "fetch": "^1.1.0",
+    "node-fetch": "^2.6.7"
   }
 }
