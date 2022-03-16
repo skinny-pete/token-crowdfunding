@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Crowdfunding
 
 ## Scripts
@@ -25,5 +26,30 @@ Adjust the following consts:
 |`toApprove: string` | address you want to approve|
 |`private_key: string` | the private key of the account you want to call the contract from|
 |`fundAddress: string` | the address of the fund contract|
+=======
+# Crowdfunding Contracts
+
+## Installations
+`npm install --save-dev hardhat`  
+  
+`npm install --save-dev @nomiclabs/hardhat-waffle ethereum-waffle chai @nomiclabs/hardhat-ethers ethers`
+  
+`npm install @openzeppelin/contracts`
+
+## Running
+To run tests:
+`npx hardhat test`
+
+To deploy:
+`npx hardhat run scripts/deploy.js --network [NETWORK_NAME]`
+
+Options for NETWORK_NAME are currently:  
+`localhost` - for deploying to an already running hardhat node  
+`ropsten` - for deploying to the ropsten public testnet using the private key included in hardhat.config.js  
+
+
+To start a hardhat node, the command is `npx hardhat node`  
+
+>>>>>>> 02b6818f9a6208b70e6ac86f8e1ec6fcd428a9e9
 
 
