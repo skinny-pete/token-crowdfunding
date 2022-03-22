@@ -36,6 +36,7 @@ async function setup() {
         fund,
         owner,
         add1,
+        add2,
         projectDeveloper,
         feeCollector,
     };
@@ -181,5 +182,34 @@ describe("Fund", function() {
             feeCollector,
             ethers.utils.parseEther("1.8")
         );
+    });
+    async function mintApproveDeposit(account, amount, fund, stable) {
+        await fund.approveAddress(account.address);
+        await stable.mint(account.address, amount);
+        await stable.connect(account).approve(fund.address, amount);
+        await fund.connect(account).deposit(amount);
+    }
+    it("Should allow users to withdraw if cap is not reached", async() => {
+        let { stable, fund, owner, add1, add2, projectDeveloper, feeCollector } =
+        await setup();
+        let amount = ethers.utils.parseEther("50");
+        await mintApproveDeposit(add1, amount, fund, stable)
+
+        let amount2 = ethers.utils.parseEther("25")
+        await mintApproveDeposit(add2, amount2, fund, stable)
+
+        await network.provider.send("evm_increaseTime", [week + 10]); //SHould have expired
+        await network.provider.send("evm_mine");
+
+        await fund.connect(add1).withdraw()
+        expect(await fund.balanceOf(add1.address)).to.equal(0)
+        expect(await stable.balanceOf(add1.address)).to.be.closeTo(amount.sub(applyFee(amount)), 1)
+
+
+        await fund.connect(add2).withdraw()
+        expect(await fund.balanceOf(add2.address)).to.equal(0);
+        expect(await stable.balanceOf(add2.address)).to.be.closeTo(amount2.sub(applyFee(amount2)), 1)
+
+        expect(await fund.totalSupply()).to.equal(0)
     });
 });

@@ -111,7 +111,7 @@ contract Fund is ERC20 {
         return true;
     }
 
-    function withdraw() public returns (bool) {
+    function withdrawDeveloper() internal {
         require(
             msg.sender == projectDeveloper,
             "Only project developer may withdraw"
@@ -130,8 +130,27 @@ contract Fund is ERC20 {
             );
             withdrawn += capsAmount[currentCap - 1] - withdrawn;
         }
+    }
 
-        return true;
+    function withdrawUser() internal {
+        require(closed(), "Fund not closed");
+        require(currentCap != capsAmount.length-1, "Fund closed correctly");
+        uint userBal = balanceOf(msg.sender);
+        uint totalToReturn = IERC20(currency).balanceOf(address(this));
+        require(userBal > 0 && totalToReturn > 0, "Nothing to return");
+        uint toReturn = ((userBal * 10**27 / totalSupply()) * totalToReturn) / 10**27;
+        IERC20(currency).transfer(msg.sender, toReturn);
+        _burn(msg.sender, userBal);
+        
+    }
+
+    function withdraw() public {
+        if(msg.sender == projectDeveloper) {
+            withdrawDeveloper();
+        }
+        else {
+            withdrawUser();
+        }
     }
 
     function approveAddress(address toApprove) public onlyOwner {
