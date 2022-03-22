@@ -6,23 +6,30 @@ const {
   ethers
 } = require("hardhat");
 
+const week = 604800
+
+const amountCaps = ["100", "1000", "20000"].map(x => ethers.utils.parseEther(x))
+let timeCaps;
 async function setup() {
 
-  const [owner, add1, add2, projectDeveloper] = await ethers.getSigners();
+  const [owner, add1, add2, projectDeveloper, feeCollector] = await ethers.getSigners();
 
-  const caps = ["100", "1000", "20000"].map(x => ethers.utils.parseEther(x))
 
   const _stable = await ethers.getContractFactory("TestToken");
   const stable = await _stable.deploy(owner.address, ethers.utils.parseEther("100000"));
+
+  const now = (await ethers.provider.getBlock("latest")).timestamp
+
+  timeCaps = [now+week, now+2*week, now+3*week]
+
   const _fund = await ethers.getContractFactory("Fund");
-  const fund = await _fund.deploy(projectDeveloper.address, stable.address, caps)
+  const fund = await _fund.deploy(feeCollector.address, projectDeveloper.address, stable.address, amountCaps, timeCaps)
 
   return {
     stable,
     fund,
     owner,
     add1,
-    add2,
     projectDeveloper
   }
 
@@ -102,8 +109,14 @@ describe("Fund", function () {
 
   })
 
+  function applyFee(amount) {
+    const numerator = 3
+    const denominator = 100
+    return amount.mul(numerator).div(denominator)
+  }
+
   it("Should allow withdrawal of the correct amounts for many caps", async () => {
-    let caps = ["100", "900", "19000"].map(x => ethers.utils.parseEther(x))
+    let caps = ["150", "1000", "20000"].map(x => ethers.utils.parseEther(x))
     let {
       stable,
       fund,
@@ -113,20 +126,13 @@ describe("Fund", function () {
       projectDeveloper
     } = await setup()
     await fund.approveAddress(add1.address)
-    let pcap;
     for (const cap of caps) {
-      await stable.connect(owner).mint(add1.address, cap)
-      await stable.connect(add1).approve(fund.address, cap)
-      await fund.connect(add1).deposit(cap)
-      pcap = cap
-
-      await expect(() => fund.connect(projectDeveloper).withdraw())
-        .to.changeTokenBalance(stable, projectDeveloper, pcap)
+      
     }
   })
 
   it("Should not leave locked tokens after all withdrawals", async () => {
-    let caps = ["100", "900", "19000"].map(x => ethers.utils.parseEther(x))
+    let caps = ["100", "900", "15000"].map(x => ethers.utils.parseEther(x))
     let {
       stable,
       fund,
@@ -144,7 +150,8 @@ describe("Fund", function () {
       await fund.connect(add1).deposit(cap)
 
     }
-    let totalLocked = ethers.utils.parseEther("20000");
+    let totalLocked = ethers.utils.parseEther("16000");
+    totalLocked = totalLocked.sub(applyFee(totalLocked))
     await expect(() => fund.connect(projectDeveloper).withdraw())
       .to.changeTokenBalance(stable, projectDeveloper, totalLocked)
   })
