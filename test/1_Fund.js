@@ -152,7 +152,7 @@ describe("Fund", function() {
         ).to.changeTokenBalance(stable, projectDeveloper, totalLocked);
     });
     it("Should revert if project developer tries to withdraw early", async() => {
-        //TODO awaiting confirmation on requirements from Dimitry
+        //TODO
     });
     it("Should close the fund if insufficient funds are raised before cap time", async() => {
         let { stable, fund, owner, add1, add2, projectDeveloper, feeCollector } =
