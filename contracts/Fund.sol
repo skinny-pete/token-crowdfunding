@@ -4,165 +4,117 @@ pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Fund is ERC20 {
-    address public projectDeveloper;
-    address private owner;
-    address feeTo;
+// Fundraising contract
+// Investment is collected and given in arbitrarily sized caps
+// Investment is rewarded in the contract's tokens -> project shares
 
-    uint feeNumerator = 3;
-    uint feeDenominator = 100;
-
+contract Fund is ERC20, Ownable {
     address public currency;
-    uint256[] public capsAmount;
-    uint256[] public capsTime;
 
-    mapping(address => bool) whitelist;
+    uint256 public currentCapIndex; // starts at zero and increases by one each time a cap is reached
+    uint256 public feeNumerator;
+    uint256 public feeDenominator;
 
-    // mapping(address => uint) contribution
-    uint256 public totalContributions;
-    uint256 withdrawn = 0;
-    uint256 public currentCap = 0;
+    uint256[] public capSizes; // amount of currency tokens each cap can accept
+    uint256[] public capDeadlines; // timestamp at which each cap stops accepting investment and closes
+    uint256[] public capTotals; // total amount contributed to each cap
+    uint256[] public capFeeTotals; // fees collected from each cap
 
-    uint256 public mintingRate;
+    mapping(uint256 => mapping(address => uint256)) investments; // cap index => account => their investment
+    mapping(uint256 => mapping(address => uint256)) fees; // cap index => account => their fees
+    mapping(uint256 => bool) public withdrawn;
+    mapping(address => bool) public whitelist;
 
-    event Deposit(uint256 amount, address depositor);
-    event Withdrawl(uint256 amount);
+    event Investment(uint256 amount, address investor);
+    event InvestmentWithdrawal(uint256 amount);
+    event StaleInvestmentWithdrawal(address withdrawer, uint256 amount);
+    event ProjectShareWithdrawal(address withdrawer, uint256 amount);
+
+    modifier currentCapExpired(bool status) {
+        bool expired = capDeadlines[currentCapIndex] > block.timestamp;
+        require(expired == status);
+        _;
+    }
 
     constructor(
-        address _feeTo,
-        address _projectDeveloper,
-        address _currency,
-        uint256[] memory _capsAmount,
-        uint[] memory _capsTime
-    ) ERC20("Fund", "FND") {
-        feeTo = _feeTo;
-        projectDeveloper = _projectDeveloper;
-        currency = _currency;
-        capsAmount = _capsAmount;
-        capsTime = _capsTime;
-        totalContributions = 0;
-        owner = msg.sender;
+        string memory name,
+        string memory symbol,
+        address currency_,
+        uint256[] memory capSizes_,
+        uint256[] memory capDeadlines_
+    ) ERC20(name, symbol) {
+        currency = currency_;
+        capSizes = capSizes_;
+        capDeadlines = capDeadlines_;
+        capTotals = new uint256[](capSizes.length);
+        capFeeTotals = new uint256[](capSizes.length);
     }
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
-        _;
-    }
+    // ---------------------- INVESTMENT ----------------------
 
-    modifier whitelisted() {
-        require(whitelist[msg.sender], "Address not permitted");
-        _;
-    }
-
-    function closed() public view returns (bool) {
-        return
-            (block.timestamp >= capsTime[currentCap] &&
-                totalContributions <= capsAmount[currentCap]) ||
-            totalContributions >= capsAmount[capsAmount.length - 1];
-    }
-
-    function applyFee(uint amount) internal view returns (uint) {
-        return (amount * feeNumerator) / feeDenominator;
-    }
-
-    function deposit(uint256 amount) public whitelisted returns (bool) {
-        require(!closed(), "This project is closed");
+    // Invest an amount into the project
+    // Cannot invest if the current cap has expired and failed to meet its target size
+    function deposit(uint256 amount) public currentCapExpired(false) {
+        uint256 investment = _addInvestment(amount);
         require(
-            IERC20(currency).transferFrom(msg.sender, address(this), amount)
+            IERC20(currency).transferFrom(msg.sender, address(this), investment)
         );
-        if (currentCap < capsAmount.length - 1) {
-            require(
-                amount <= capsAmount[currentCap + 1] - totalContributions,
-                "Deposit too large, please make two transactions"
-            );
-        }
+    }
 
-        if (currentCap == capsAmount.length - 1) {
-            require(
-                amount <=
-                    capsAmount[capsAmount.length - 1] - totalContributions,
-                "This deposit would exceed max cap"
-            );
-        }
-
-        uint feeCollected = applyFee(amount);
-        IERC20(currency).transfer(feeTo, feeCollected);
-
-        uint256 toMint;
-        if (totalContributions == 0) {
-            toMint = 10**18;
-            mintingRate = amount;
+    // Fills up consecutive caps with an amount of currency
+    function _addInvestment(uint256 amount) internal returns (uint256) {
+        if (capTotals[currentCapIndex] + amount < capSizes[currentCapIndex]) {
+            capTotals[currentCapIndex] += amount;
+            investments[currentCapIndex][msg.sender] += amount;
+            return amount;
         } else {
-            toMint = (amount * 10**18) / mintingRate;
-        }
-
-        totalContributions += amount;
-        if (totalContributions >= capsAmount[currentCap]) {
-            currentCap = currentCap < capsAmount.length - 1
-                ? currentCap + 1
-                : currentCap;
-        }
-
-        _mint(msg.sender, toMint);
-
-        emit Deposit(amount, msg.sender); //TODO emit event with full amount, or amount minus fee?
-
-        return true;
-    }
-
-    function withdrawDeveloper() internal {
-        require(
-            msg.sender == projectDeveloper,
-            "Only project developer may withdraw"
-        );
-        require(currentCap > 0, "Cannot withdraw until secondary cap reached");
-
-        if (currentCap == capsAmount.length - 1) {
-            //If have reached last cap - release all remaining funds
-            uint balance = IERC20(currency).balanceOf(address(this));
-            IERC20(currency).transfer(projectDeveloper, balance);
-        } else {
-            //Otherwise transfer the last complete cap
-            IERC20(currency).transfer(
-                projectDeveloper,
-                capsAmount[currentCap - 1] - withdrawn
-            );
-            withdrawn += capsAmount[currentCap - 1] - withdrawn;
+            uint256 remaining = capSizes[currentCapIndex] -
+                capTotals[currentCapIndex];
+            capTotals[currentCapIndex] += remaining;
+            investments[currentCapIndex][msg.sender] += remaining;
+            bool lastCap = currentCapIndex == capSizes.length - 1;
+            currentCapIndex += 1;
+            return
+                remaining + (lastCap ? 0 : _addInvestment(amount - remaining));
         }
     }
 
-    function withdrawUser() internal {
-        require(closed(), "Fund not closed");
-        require(currentCap != capsAmount.length-1, "Fund closed correctly");
-        uint userBal = balanceOf(msg.sender);
-        uint totalToReturn = IERC20(currency).balanceOf(address(this));
-        require(userBal > 0 && totalToReturn > 0, "Nothing to return");
-        uint toReturn = ((userBal * 10**27 / totalSupply()) * totalToReturn) / 10**27;
-        IERC20(currency).transfer(msg.sender, toReturn);
-        _burn(msg.sender, userBal);
-        
-    }
+    // ---------------------- WITHDRAWALS ----------------------
 
-    function withdraw() public {
-        if(msg.sender == projectDeveloper) {
-            withdrawDeveloper();
-        }
-        else {
-            withdrawUser();
+    // Fund owner withdraws successfully filled caps
+    function withdrawInvestment() public {
+        for (uint256 i = 0; i < capSizes.length; i++) {
+            if (i < currentCapIndex) {
+                IERC20(currency).transfer(owner(), capTotals[i]);
+                capTotals[i] = 0;
+            }
         }
     }
 
-    function approveAddress(address toApprove) public onlyOwner {
-        whitelist[toApprove] = true;
+    // Withdraw share tokens from investment that contributed to a successful cap
+    function withdrawShares() public {
+        for (uint256 i = 0; i < capSizes.length; i++) {
+            if (i < currentCapIndex) {
+                _mint(msg.sender, investments[i][msg.sender]);
+                investments[i][msg.sender] = 0;
+            }
+        }
     }
 
-    function setFeeTo(address newFeeTo) public onlyOwner {
-        feeTo = newFeeTo;
+    // Withdraw investment made into an unsuccessul caps
+    function withdrawStaleInvestment() public currentCapExpired(true) {
+        uint256 total = investments[currentCapIndex][msg.sender] +
+            fees[currentCapIndex][msg.sender];
+        IERC20(currency).transfer(msg.sender, total);
+        investments[currentCapIndex][msg.sender] = 0;
+        fees[currentCapIndex][msg.sender] = 0;
     }
 
-    function setFee(uint numerator, uint denominator) public onlyOwner {
-        feeNumerator = numerator;
-        feeDenominator = denominator;
+    // ----------------OTHER------------------------------------
+
+    function approveAddress(address who) public onlyOwner {
+        whitelist[who] = true;
     }
 }
