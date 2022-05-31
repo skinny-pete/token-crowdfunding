@@ -45,6 +45,7 @@ To deploy:
 Options for NETWORK_NAME are currently:  
 `localhost` - for deploying to an already running hardhat node  
 `ropsten` - for deploying to the ropsten public testnet using the private key included in hardhat.config.js  
+`mumbai` - for deploying to the Matic Mumbai testnet
 
 
 To start a hardhat node, the command is `npx hardhat node`  
